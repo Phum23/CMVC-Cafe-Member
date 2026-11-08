@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบสะสมแต้ม - Loyalty Points System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#2563eb',
+                            600: '#1d4ed8',
+                            700: '#1e40af',
+                            800: '#1e3a8a',
+                        },
+                        gold: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .gradient-card {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #1d4ed8 100%);
+        }
+        .gold-card {
+            background: linear-gradient(135deg, #b45309 0%, #f59e0b 50%, #d97706 100%);
+        }
+        .silver-card {
+            background: linear-gradient(135deg, #475569 0%, #94a3b8 50%, #64748b 100%);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Top Toast Notification Area -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- Navigation Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Logo & Brand -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-brand-500/30">
+                    <i class="fa-solid fa-coins"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-slate-900 text-lg leading-none">PointPlus</h1>
+                    <span class="text-xs text-slate-500 font-medium">ระบบสะสมแต้มรีวอร์ด</span>
+                </div>
+            </div>
+
+            <!-- Header Controls -->
+            <div class="flex items-center gap-3">
+                <!-- Role Switcher Badge -->
+                <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+                    <button id="btnRoleUser" onclick="switchRole('user')" class="px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-brand-600 shadow-sm">
+                        <i class="fa-solid fa-user mr-1"></i> ลูกค้า
+                    </button>
+                    <button id="btnRoleAdmin" onclick="switchRole('admin')" class="px-3 py-1.5 rounded-lg transition-all duration-200 text-slate-600 hover:text-slate-900">
+                        <i class="fa-solid fa-user-shield mr-1"></i> ผู้ดูแลระบบ
+                    </button>
+                </div>
+
+                <!-- User Profile / Auth Status -->
+                <div id="authStatusArea" class="flex items-center gap-3 pl-2 border-l border-slate-200">
+                    <!-- Dynamic rendering by JS -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Dynamic Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- ========================================== -->
+        <!-- USER VIEW CONTAINER -->
+        <!-- ========================================== -->
+        <div id="userView" class="space-y-6">
+
+            <!-- Logged In Dashboard -->
+            <div id="userDashboard" class="hidden space-y-6">
+                <!-- Profile & Point Summary Header Banner -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Point Card -->
+                    <div id="memberTierCard" class="gradient-card rounded-2xl p-6 text-white shadow-xl relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+                        <!-- Background Pattern -->
+                        <div class="absolute -right-8 -bottom-8 opacity-10 text-white text-9xl pointer-events-none">
+                            <i class="fa-solid fa-award"></i>
+                        </div>
+
+                        <div class="flex justify-between items-start z-10">
+                            <div>
+                                <span class="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium tracking-wide uppercase" id="userTierBadge">
+                                    Member
+                                </span>
+                                <p class="text-white/80 text-xs mt-3">คะแนนสะสมคงเหลือ</p>
+                            </div>
+                            <i class="fa-solid fa-wifi text-white/50 text-xl"></i>
+                        </div>
+
+                        <div class="my-4 z-10">
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-5xl font-extrabold tracking-tight" id="userPoints">0</span>
+                                <span class="text-lg font-medium text-white/90">คะแนน</span>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-end z-10 pt-4 border-t border-white/20 text-xs">
+                            <div>
+                                <p class="text-white/70">เจ้าของบัญชี</p>
+                                <p class="font-semibold text-sm text-white" id="userName">...</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-white/70">รหัสสมาชิก</p>
+                                <p class="font-mono text-sm" id="userCode">#0000</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress to Next Tier & Quick Stats -->
+                    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between lg:col-span-2">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <h3 class="font-bold text-slate-800 text-lg">ระดับสมาชิกของคุณ</h3>
+                                    <p class="text-xs text-slate-500">สะสมคะแนนเพิ่มเพื่ออัปเกรดสิทธิประโยชน์</p>
+                                </div>
+                                <span class="text-xs font-bold px-3 py-1 rounded-lg bg-brand-50 text-brand-600 border border-brand-100" id="tierProgressLabel">Silver Tier</span>
+                            </div>
+
+                            <!-- Tier Progress Bar -->
+                            <div class="space-y-2 my-4">
+                                <div class="flex justify-between text-xs font-semibold text-slate-600">
+                                    <span> Silver (0 - 499)</span>
+                                    <span> Gold (500 - 1,499)</span>
+                                    <span> Platinum (1,500+)</span>
+                                </div>
+                                <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden p-0.5 border border-slate-200">
+                                    <div id="tierProgressBar" class="bg-gradient-to-r from-brand-500 to-indigo-600 h-full rounded-full transition-all duration-500" style="width: 20%"></div>
+                                </div>
+                                <p class="text-xs text-slate-500 text-right" id="tierNextMsg">ต้องการอีก 400 คะแนนเพื่อปรับเป็นระดับ Gold</p>
+                            </div>
+                        </div>
+
+                        <!-- Quick Action Stats -->
+                        <div class="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100 text-center">
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                                <span class="block text-xs text-slate-500">ได้แต้มรวมทั้งหมด</span>
+                                <span class="font-bold text-slate-800 text-base" id="statTotalEarned">0</span>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                                <span class="block text-xs text-slate-500">แลกใช้แล้ว</span>
+                                <span class="font-bold text-slate-800 text-base" id="statTotalRedeemed">0</span>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                                <span class="block text-xs text-slate-500">จำนวนการแลก</span>
+                                <span class="font-bold text-slate-800 text-base" id="statRedeemCount">0 ครั้ง</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rewards List & Transaction Tabs -->
+                <div class="space-y-4">
+                    <!-- Tab Headers -->
+                    <div class="flex border-b border-slate-200 gap-6 text-sm font-semibold">
+                        <button onclick="switchUserTab('rewards')" id="tabUserRewards" class="pb-3 border-b-2 border-brand-600 text-brand-600 flex items-center gap-2">
+                            <i class="fa-solid fa-gift"></i> แลกของรางวัล
+                        </button>
+                        <button onclick="switchUserTab('history')" id="tabUserHistory" class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left"></i> ประวัติคะแนนและการแลก
+                        </button>
+                    </div>
+
+                    <!-- Rewards Tab Panel -->
+                    <div id="panelUserRewards" class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-slate-800 text-base">ของรางวัลที่สามารถแลกได้</h3>
+                            <span class="text-xs text-slate-500">คลิกที่ของรางวัลเพื่อทำการแลกแต้ม</span>
+                        </div>
+                        <div id="userRewardsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            <!-- Rendered by JS -->
+                        </div>
+                    </div>
+
+                    <!-- History Tab Panel -->
+                    <div id="panelUserHistory" class="hidden bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-sm">
+                                <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold text-xs uppercase tracking-wider">
+                                    <tr>
+                                        <th class="p-4">วัน-เวลา</th>
+                                        <th class="p-4">รายการ</th>
+                                        <th class="p-4">ประเภท</th>
+                                        <th class="p-4 text-right">คะแนน</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userHistoryTable" class="divide-y divide-slate-100">
+                                    <!-- Rendered by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logged Out / Login Promo Screen -->
+            <div id="userLoginRequired" class="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200 text-center shadow-lg max-w-xl mx-auto my-12 space-y-6">
+                <div class="w-20 h-20 bg-brand-50 rounded-3xl text-brand-600 flex items-center justify-center mx-auto text-3xl shadow-inner border border-brand-100">
+                    <i class="fa-solid fa-gift"></i>
+                </div>
+                <div class="space-y-2">
+                    <h2 class="text-2xl font-bold text-slate-900">เข้าสู่ระบบเพื่อสะสมและแลกแต้ม</h2>
+                    <p class="text-slate-500 text-sm leading-relaxed">
+                        รับสิทธิพิเศษสุดเอ็กซ์คลูซีฟ สะสมคะแนนทุกการใช้บริการ แลกรับส่วนลด เครื่องดื่ม และของรางวัลมากมาย
+                    </p>
+                </div>
+                
+                <div class="pt-4 border-t border-slate-100 space-y-3">
+                    <button onclick="loginWithGoogleSimulated()" class="w-full py-3.5 px-4 bg-white border border-slate-300 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 shadow-sm flex items-center justify-center gap-3 transition-all">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                        </svg>
+                        เข้าสู่ระบบด้วย Google Account (Gmail)
+                    </button>
+                    <p class="text-xs text-slate-400">ระบบจำลองการล็อกอิน Google อัตโนมัติ ปลอดภัย ไม่ต้องป้อนรหัสผ่านจริง</p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ========================================== -->
+        <!-- ADMIN VIEW CONTAINER -->
+        <!-- ========================================== -->
+        <div id="adminView" class="hidden space-y-6">
+            
+            <!-- Admin Top Navigation Tabs -->
+            <div class="bg-white rounded-2xl p-2 border border-slate-200 shadow-sm flex flex-wrap gap-2 text-sm font-semibold">
+                <button onclick="switchAdminTab('users')" id="btnAdminTabUsers" class="px-4 py-2.5 rounded-xl bg-brand-600 text-white flex items-center gap-2 shadow-sm transition-all">
+                    <i class="fa-solid fa-users"></i> จัดการลูกค้า & เพิ่ม-ลดคะแนน
+                </button>
+                <button onclick="switchAdminTab('rewards')" id="btnAdminTabRewards" class="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-boxes-stacked"></i> จัดการของรางวัล
+                </button>
+                <button onclick="switchAdminTab('logs')" id="btnAdminTabLogs" class="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-receipt"></i> ประวัติรายการทั้งหมด (Master Logs)
+                </button>
+            </div>
+
+            <!-- ADMIN TAB 1: USERS & POINT ADJUSTMENT -->
+            <div id="adminPanelUsers" class="space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- User Management List -->
+                    <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                        <div class="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row gap-3 justify-between sm:items-center">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-base">รายชื่อสมาชิกทั้งหมด</h3>
+                                <p class="text-xs text-slate-500">สมาชิก <span id="memberCount" class="font-bold text-brand-600">0</span> / 200 คน • ลบอัตโนมัติเมื่อไม่มีความเคลื่อนไหวครบ 30 วัน</p>
+                            </div>
+                            <div class="relative max-w-xs w-full">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" id="adminUserSearch" onkeyup="filterAdminUsers()" placeholder="ค้นหาด้วยชื่อ, อีเมล หรือเบอร์..." class="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto flex-grow max-h-[500px]">
+                            <table class="w-full text-left border-collapse text-sm">
+                                <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold text-xs uppercase sticky top-0">
+                                    <tr>
+                                        <th class="p-3">สมาชิก</th>
+                                        <th class="p-3">เบอร์โทรศัพท์</th>
+                                        <th class="p-3">ระดับ</th>
+                                        <th class="p-3 text-right">คะแนนคงเหลือ</th>
+                                        <th class="p-3 text-center">หมดอายุใน</th>
+                                        <th class="p-3 text-center">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminUserTable" class="divide-y divide-slate-100">
+                                    <!-- Rendered by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Point Add/Deduct Form Card -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center gap-3 pb-3 border-b border-slate-100">
+                                <div class="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold">
+                                    <i class="fa-solid fa-sliders"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-800 text-base">ปรับปรุงคะแนน</h3>
+                                    <p class="text-xs text-slate-500">เติมแต้ม หรือ หักแต้มลูกค้า</p>
+                                </div>
+                            </div>
+
+                            <form id="pointAdjustForm" onsubmit="handlePointAdjust(event)" class="space-y-4 mt-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">เลือกลูกค้า <span class="text-red-500">*</span></label>
+                                    <select id="adjUserSelect" required class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                                        <option value="">-- เลือกลูกค้า --</option>
+                                    </select>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">การดำเนินการ</label>
+                                        <select id="adjType" class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none font-medium">
+                                            <option value="add" class="text-emerald-600">➕ เพิ่มคะแนน (+)</option>
+                                            <option value="deduct" class="text-rose-600">➖ หักคะแนน (-)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">จำนวนคะแนน <span class="text-red-500">*</span></label>
+                                        <input type="number" id="adjAmount" required min="1" placeholder="0" class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">เหตุผล / หมายเหตุ <span class="text-red-500">*</span></label>
+                                    <input type="text" id="adjReason" required placeholder="เช่น ยอดซื้อ 500 บาท, โปรโมชั่นวันเกิด" class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                                </div>
+
+                                <button type="submit" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold shadow-md shadow-brand-500/20 transition-all flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-floppy-disk"></i> บันทึกรายการ
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Quick Helper Note -->
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 space-y-1">
+                            <p class="font-semibold text-slate-700"><i class="fa-solid fa-lightbulb text-amber-500"></i> หมายเหตุ:</p>
+                            <p>• เพิ่มคะแนน: เมื่อลูกค้ายอดซื้อสินค้า หรือเข้าร่วมกิจกรรม</p>
+                            <p>• หักคะแนน: ในกรณีปรับปรุงคะแนนผิดพลาด หรือปรับเปลี่ยนพิเศษ</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMIN TAB 2: REWARD MANAGEMENT -->
+            <div id="adminPanelRewards" class="hidden space-y-6">
+                <div class="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base">รายการของรางวัลทั้งหมด</h3>
+                        <p class="text-xs text-slate-500">เพิ่ม แก้ไข หรือลบของรางวัลที่แสดงในหน้าลูกค้า</p>
+                    </div>
+                    <button onclick="openRewardModal()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all">
+                        <i class="fa-solid fa-plus"></i> เพิ่มของรางวัลใหม่
+                    </button>
+                </div>
+
+                <div id="adminRewardsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+
+            <!-- ADMIN TAB 3: MASTER LOGS -->
+            <div id="adminPanelLogs" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-4 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-800 text-base">ประวัติธุรกรรมระบบทั้งหมด</h3>
+                    <span class="text-xs text-slate-500" id="totalLogCount">0 รายการ</span>
+                </div>
+                <div class="overflow-x-auto max-h-[600px]">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold text-xs uppercase sticky top-0">
+                            <tr>
+                                <th class="p-3">วัน-เวลา</th>
+                                <th class="p-3">ลูกค้า</th>
+                                <th class="p-3">รายการ / เหตุผล</th>
+                                <th class="p-3">ประเภท</th>
+                                <th class="p-3 text-right">คะแนน</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminMasterLogsTable" class="divide-y divide-slate-100">
+                            <!-- Rendered by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-auto py-4 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <span>© 2026 PointPlus Loyalty System. Dynamic Web App Demo.</span>
+            <span class="text-slate-400">พัฒนาด้วย HTML5 / Tailwind CSS / Vanilla JS</span>
+        </div>
+    </footer>
+
+    <!-- ========================================== -->
+    <!-- MODALS -->
+    <!-- ========================================== -->
+
+    <!-- Add/Edit Reward Modal -->
+    <div id="rewardModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-800 text-lg" id="rewardModalTitle">เพิ่มของรางวัลใหม่</h3>
+                <button onclick="closeRewardModal()" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="rewardForm" onsubmit="saveReward(event)" class="space-y-4">
+                <input type="hidden" id="rewardId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อของรางวัล <span class="text-red-500">*</span></label>
+                    <input type="text" id="rewardTitle" required placeholder="เช่น กาแฟฟรี 1 แก้ว, ส่วนลด 100 บาท" class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">คะแนนที่ใช้แลก <span class="text-red-500">*</span></label>
+                    <input type="number" id="rewardPoints" required min="1" placeholder="100" class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">ไอคอน (FontAwesome Class) หรือ URL รูปภาพ</label>
+                    <input type="text" id="rewardIcon" placeholder="fa-mug-hot หรือ https://..." class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    <p class="text-[10px] text-slate-400 mt-1">ตัวอย่างไอคอน: fa-mug-hot, fa-ticket, fa-shirt, fa-burger, fa-gift</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">รายละเอียดเพิ่มเติม</label>
+                    <textarea id="rewardDesc" rows="2" placeholder="เงื่อนไขการใช้งาน..." class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"></textarea>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeRewardModal()" class="w-1/2 py-2.5 border border-slate-300 text-slate-600 rounded-xl font-semibold text-sm hover:bg-slate-50">ยกเลิก</button>
+                    <button type="submit" class="w-1/2 py-2.5 bg-brand-600 text-white rounded-xl font-semibold text-sm hover:bg-brand-700 shadow-md">บันทึกข้อมูล</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Redeem Modal -->
+    <div id="redeemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-center">
+            <div class="w-16 h-16 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto text-3xl border border-amber-100">
+                <i class="fa-solid fa-gift"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-800 text-lg">ยืนยันการแลกของรางวัล</h3>
+                <p class="text-xs text-slate-500 mt-1" id="redeemModalItem">กาแฟสดฟรี 1 แก้ว</p>
+                <div class="my-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span class="text-xs text-slate-500">ใช้คะแนนสะสม</span>
+                    <p class="text-2xl font-bold text-brand-600" id="redeemModalPoints">100 แต้ม</p>
+                </div>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button onclick="closeRedeemModal()" class="w-1/2 py-2.5 border border-slate-300 text-slate-600 rounded-xl font-semibold text-sm hover:bg-slate-50">ยกเลิก</button>
+                <button id="btnConfirmRedeem" class="w-1/2 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 shadow-md">ยืนยันแลกแต้ม</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Password Modal -->
+    <div id="adminPassModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div class="text-center space-y-2">
+                <div class="w-14 h-14 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center mx-auto text-2xl border border-brand-100">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-lg">เข้าสู่โหมดผู้ดูแลระบบ</h3>
+                <p class="text-xs text-slate-500">กรุณากรอกรหัสผ่านเพื่อเข้าถึงส่วนจัดการ</p>
+            </div>
+            <form onsubmit="submitAdminPassword(event)" class="space-y-3">
+                <input type="password" id="adminPassInput" required autocomplete="off" placeholder="รหัสผ่านผู้ดูแลระบบ" class="w-full p-2.5 border border-slate-300 rounded-xl text-sm text-center tracking-widest focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                <p id="adminPassError" class="text-xs text-rose-600 text-center hidden"></p>
+                <div class="flex gap-2 pt-1">
+                    <button type="button" onclick="closeAdminPassModal()" class="w-1/2 py-2.5 border border-slate-300 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50">ยกเลิก</button>
+                    <button type="submit" id="adminPassSubmit" class="w-1/2 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-semibold hover:bg-brand-700 shadow">เข้าสู่ระบบ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Google Login Simulator Modal -->
+    <div id="googleSimModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center gap-3 border-b border-slate-100 pb-3">
+                <svg class="w-6 h-6" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                <h3 class="font-bold text-slate-800">เข้าสู่ระบบด้วย Google Account</h3>
+            </div>
+            
+            <form onsubmit="confirmSimulatedLogin(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อ-นามสกุล</label>
+                    <input type="text" id="simName" required placeholder="สมชาย ใจดี" class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">อีเมล Gmail</label>
+                    <input type="email" id="simEmail" required placeholder="somchai@gmail.com" class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">เบอร์โทรศัพท์ (ถ้ามี)</label>
+                    <input type="tel" id="simPhone" placeholder="081-234-5678" class="w-full p-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500">
+                </div>
+                
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeSimModal()" class="w-1/2 py-2 border border-slate-300 rounded-xl text-sm font-semibold text-slate-600">ยกเลิก</button>
+                    <button type="submit" class="w-1/2 py-2 bg-brand-600 text-white rounded-xl text-sm font-semibold hover:bg-brand-700 shadow">เข้าสู่ระบบ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- APPLICATION JAVASCRIPT LOGIC -->
+    <!-- ========================================== -->
+    <script>
+        // Initial Mock Database State
+        const INITIAL_USERS = [];
+
+        const INITIAL_REWARDS = [
+            { id: 'rew_1', title: 'เครื่องดื่มฟรี 1 แก้ว (เมนูใดก็ได้)', points: 100, icon: 'fa-mug-hot', desc: 'แลกรับเครื่องดื่มร้อนหรือเย็นไซส์ L หน้าเคาน์เตอร์' },
+            { id: 'rew_2', title: 'ส่วนลด 100 บาท (ยอดขั้นต่ำ 300 บาท)', points: 250, icon: 'fa-ticket', desc: 'ส่วนลดท้ายบิลเมื่อซื้อสินค้าครบ 300 บาทขึ้นไป' },
+            { id: 'rew_3', title: 'เสื้อยืดพรีเมียม PointPlus', points: 500, icon: 'fa-shirt', desc: 'เสื้อยืดคอตตอนแท้ 100% สกรีนลายลิมิเต็ด' },
+            { id: 'rew_4', title: 'คูปองบุฟเฟต์ทานฟรี 1 ท่าน', points: 1200, icon: 'fa-utensils', desc: 'ใช้งานได้ทุกสาขา สำหรับมื้อเย็นสุดพิเศษ' }
+        ];
+
+        const INITIAL_LOGS = [];
+
+        // ==========================================
+        // CONFIG: ขีดจำกัดและอายุข้อมูลลูกค้า
+        // ==========================================
+        const MAX_CUSTOMERS = 200;          // รองรับลูกค้าสูงสุด 200 คน
+        const EXPIRE_DAYS = 30;             // ลบลูกค้าอัตโนมัติเมื่อไม่มีความเคลื่อนไหวครบ 30 วัน (1 เดือน)
+        const DAY_MS = 24 * 60 * 60 * 1000;
+        const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // ตรวจสอบทุก 1 ชั่วโมง
+
+        // ล้างข้อมูลลูกค้าเก่าทั้งหมดที่ค้างอยู่ในเบราว์เซอร์ (ทำครั้งเดียว)
+        try {
+            if (!localStorage.getItem('pts_reset_v2')) {
+                localStorage.removeItem('pts_users');
+                localStorage.removeItem('pts_logs');
+                localStorage.setItem('pts_reset_v2', '1');
+            }
+        } catch (e) {}
+
+        // Global State Manager (In-Memory with LocalStorage persistence support)
+        let state = {
+            currentRole: 'user', // 'user' or 'admin'
+            currentUser: null,  // Logged-in customer
+            users: JSON.parse(localStorage.getItem('pts_users')) || INITIAL_USERS,
+            rewards: JSON.parse(localStorage.getItem('pts_rewards')) || INITIAL_REWARDS,
+            logs: JSON.parse(localStorage.getItem('pts_logs')) || INITIAL_LOGS,
+            selectedRewardForRedeem: null
+        };
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            // ลบสมาชิกตัวอย่างเดิม 3 คน (ที่อาจค้างอยู่ใน localStorage ของเบราว์เซอร์) ออก
+            const DEMO_IDS = ['usr_1', 'usr_2', 'usr_3'];
+            state.users = state.users.filter(u => !DEMO_IDS.includes(u.id));
+            state.logs = state.logs.filter(l => !DEMO_IDS.includes(l.userId));
+
+            // เติมวันที่ใช้งานล่าสุดให้ข้อมูลเดิมที่ยังไม่มี
+            state.users.forEach(u => {
+                if (!u.lastActive) u.lastActive = Date.now();
+                if (!u.createdAt) u.createdAt = u.lastActive;
+            });
+
+            // ลบลูกค้าที่ครบกำหนดตั้งแต่ตอนเปิดหน้าเว็บ
+            cleanupExpiredCustomers(true);
+            saveStateToStorage();
+            
+            // เริ่มต้นที่หน้าเข้าสู่ระบบเสมอ (ไม่ล็อกอินอัตโนมัติ)
+            state.currentUser = null;
+
+            renderHeaderAuth();
+            renderUserView();
+            renderAdminView();
+
+            // เมื่อมีการสมัคร/แก้ไขข้อมูลจากแท็บอื่นในเบราว์เซอร์เดียวกัน ให้หน้าจัดการลูกค้าอัปเดตทันที
+            window.addEventListener('storage', (ev) => {
+                if (!['pts_users', 'pts_logs', 'pts_rewards'].includes(ev.key)) return;
+                state.users = JSON.parse(localStorage.getItem('pts_users')) || [];
+                state.logs = JSON.parse(localStorage.getItem('pts_logs')) || [];
+                state.rewards = JSON.parse(localStorage.getItem('pts_rewards')) || state.rewards;
+                if (state.currentUser) {
+                    state.currentUser = state.users.find(u => u.id === state.currentUser.id) || null;
+                }
+                renderHeaderAuth();
+                renderUserView();
+                renderAdminView();
+            });
+
+            // ตรวจสอบและลบอัตโนมัติเป็นระยะ ขณะที่เปิดหน้าเว็บค้างไว้
+            setInterval(() => cleanupExpiredCustomers(false), CLEANUP_INTERVAL_MS);
+        });
+
+        // ==========================================
+        // AUTO-DELETE: ลบลูกค้าที่ไม่มีความเคลื่อนไหวครบ 1 เดือน
+        // ==========================================
+        function touchUser(user) {
+            if (user) user.lastActive = Date.now();
+        }
+
+        function daysLeft(user) {
+            const left = EXPIRE_DAYS * DAY_MS - (Date.now() - (user.lastActive || Date.now()));
+            return Math.max(0, Math.ceil(left / DAY_MS));
+        }
+
+        function cleanupExpiredCustomers(silent) {
+            const now = Date.now();
+            const expired = state.users.filter(u => now - (u.lastActive || now) >= EXPIRE_DAYS * DAY_MS);
+            if (expired.length === 0) return 0;
+
+            const expiredIds = new Set(expired.map(u => u.id));
+            state.users = state.users.filter(u => !expiredIds.has(u.id));
+            state.logs = state.logs.filter(l => !expiredIds.has(l.userId));
+
+            // ถ้าผู้ใช้ที่ล็อกอินอยู่ถูกลบ ให้ออกจากระบบ
+            if (state.currentUser && expiredIds.has(state.currentUser.id)) {
+                state.currentUser = null;
+            }
+
+            saveStateToStorage();
+
+            if (!silent) {
+                renderHeaderAuth();
+                renderUserView();
+                renderAdminView();
+            }
+            showToast(`ลบสมาชิกที่ครบกำหนด ${EXPIRE_DAYS} วันอัตโนมัติ ${expired.length} ราย`, 'info');
+            return expired.length;
+        }
+
+        function saveStateToStorage() {
+            localStorage.setItem('pts_users', JSON.stringify(state.users));
+            localStorage.setItem('pts_rewards', JSON.stringify(state.rewards));
+            localStorage.setItem('pts_logs', JSON.stringify(state.logs));
+        }
+
+        // ==========================================
+        // ROLE SWITCHING LOGIC
+        // ==========================================
+        const ADMIN_PASSWORD = '12345678';
+        const ADMIN_MAX_ATTEMPTS = 5;
+        const ADMIN_LOCK_MS = 30 * 1000;
+        let adminFailCount = 0;
+        let adminLockUntil = 0;
+
+        // ทุกครั้งที่สลับไปโหมดผู้ดูแลระบบ ต้องกรอกรหัสผ่านก่อน
+        function switchRole(role) {
+            if (role === 'admin') {
+                document.getElementById('adminPassInput').value = '';
+                document.getElementById('adminPassError').classList.add('hidden');
+                document.getElementById('adminPassModal').classList.remove('hidden');
+                setTimeout(() => document.getElementById('adminPassInput').focus(), 50);
+                return;
+            }
+            applyRole(role);
+        }
+
+        function closeAdminPassModal() {
+            document.getElementById('adminPassModal').classList.add('hidden');
+        }
+
+        function submitAdminPassword(e) {
+            e.preventDefault();
+            const input = document.getElementById('adminPassInput');
+            const err = document.getElementById('adminPassError');
+
+            const now = Date.now();
+            if (now < adminLockUntil) {
+                const sec = Math.ceil((adminLockUntil - now) / 1000);
+                err.innerText = `กรอกรหัสผิดหลายครั้ง กรุณารอ ${sec} วินาที`;
+                err.classList.remove('hidden');
+                return;
+            }
+
+            if (input.value === ADMIN_PASSWORD) {
+                adminFailCount = 0;
+                input.value = '';
+                closeAdminPassModal();
+                applyRole('admin');
+                showToast('เข้าสู่โหมดผู้ดูแลระบบสำเร็จ', 'success');
+            } else {
+                adminFailCount++;
+                input.value = '';
+                if (adminFailCount >= ADMIN_MAX_ATTEMPTS) {
+                    adminLockUntil = Date.now() + ADMIN_LOCK_MS;
+                    adminFailCount = 0;
+                    err.innerText = 'กรอกรหัสผิดเกินกำหนด ระบบล็อก 30 วินาที';
+                } else {
+                    err.innerText = `รหัสผ่านไม่ถูกต้อง (เหลืออีก ${ADMIN_MAX_ATTEMPTS - adminFailCount} ครั้ง)`;
+                }
+                err.classList.remove('hidden');
+                input.focus();
+            }
+        }
+
+        function applyRole(role) {
+            state.currentRole = role;
+            const btnUser = document.getElementById('btnRoleUser');
+            const btnAdmin = document.getElementById('btnRoleAdmin');
+            const userView = document.getElementById('userView');
+            const adminView = document.getElementById('adminView');
+
+            if (role === 'user') {
+                btnUser.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-brand-600 shadow-sm font-semibold";
+                btnAdmin.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-slate-600 hover:text-slate-900";
+                userView.classList.remove('hidden');
+                adminView.classList.add('hidden');
+                renderUserView();
+            } else {
+                btnAdmin.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-brand-600 shadow-sm font-semibold";
+                btnUser.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-slate-600 hover:text-slate-900";
+                adminView.classList.remove('hidden');
+                userView.classList.add('hidden');
+                renderAdminView();
+            }
+        }
+
+        // ==========================================
+        // AUTHENTICATION LOGIC (Google Sim)
+        // ==========================================
+        function renderHeaderAuth() {
+            const area = document.getElementById('authStatusArea');
+            if (state.currentUser) {
+                area.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <img src="${state.currentUser.avatar || 'https://placehold.co/40x40/2563eb/ffffff?text=U'}" class="w-8 h-8 rounded-full border border-slate-300">
+                        <div class="hidden sm:block text-left">
+                            <p class="text-xs font-bold text-slate-800 leading-none">${state.currentUser.name}</p>
+                            <p class="text-[10px] text-slate-500">${state.currentUser.email}</p>
+                        </div>
+                        <button onclick="logout()" class="ml-1 p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100 transition-colors" title="ออกจากระบบ">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </button>
+                    </div>
+                `;
+            } else {
+                area.innerHTML = `
+                    <button onclick="loginWithGoogleSimulated()" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-right-to-bracket"></i> เข้าสู่ระบบ
+                    </button>
+                `;
+            }
+        }
+
+        function loginWithGoogleSimulated() {
+            document.getElementById('simName').value = '';
+            document.getElementById('simEmail').value = '';
+            document.getElementById('simPhone').value = '';
+            document.getElementById('googleSimModal').classList.remove('hidden');
+        }
+
+        function closeSimModal() {
+            document.getElementById('googleSimModal').classList.add('hidden');
+        }
+
+        function confirmSimulatedLogin(e) {
+            e.preventDefault();
+            const name = document.getElementById('simName').value.trim();
+            const email = document.getElementById('simEmail').value.trim();
+            const phone = document.getElementById('simPhone').value.trim() || '080-000-0000';
+
+            // Check if user already exists
+            let existingUser = state.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+            if (!existingUser) {
+                // ตรวจสอบจำนวนสมาชิกสูงสุด
+                if (state.users.length >= MAX_CUSTOMERS) {
+                    showToast(`ไม่สามารถสมัครได้ ระบบรองรับสมาชิกสูงสุด ${MAX_CUSTOMERS} คน`, 'error');
+                    return;
+                }
+                const newId = 'usr_' + Date.now();
+                const newCode = 'M' + Math.floor(1000 + Math.random() * 9000);
+                existingUser = {
+                    id: newId,
+                    code: newCode,
+                    name: name,
+                    email: email,
+                    phone: phone,
+                    points: 0,
+                    totalEarned: 0,
+                    totalRedeemed: 0,
+                    createdAt: Date.now(),
+                    lastActive: Date.now(),
+                    avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${name}`
+                };
+                state.users.push(existingUser);
+                
+
+                showToast('สมัครสมาชิกสำเร็จ ยินดีต้อนรับ!', 'success');
+            } else {
+                touchUser(existingUser); // ต่ออายุข้อมูลอีก 30 วัน
+                showToast(`ยินดีต้อนรับกลับคุณ ${existingUser.name}`, 'info');
+            }
+
+            state.currentUser = existingUser;
+            saveStateToStorage();
+            closeSimModal();
+            renderHeaderAuth();
+            renderUserView();
+            renderAdminView();
+        }
+
+        function logout() {
+            state.currentUser = null;
+            renderHeaderAuth();
+            renderUserView();
+            showToast('ออกจากระบบเรียบร้อยแล้ว', 'info');
+        }
+
+        // ==========================================
+        // USER VIEW RENDER LOGIC
+        // ==========================================
+        function renderUserView() {
+            const dash = document.getElementById('userDashboard');
+            const reqLogin = document.getElementById('userLoginRequired');
+
+            if (!state.currentUser) {
+                dash.classList.add('hidden');
+                reqLogin.classList.remove('hidden');
+                return;
+            }
+
+            dash.classList.remove('hidden');
+            reqLogin.classList.add('hidden');
+
+            const u = state.currentUser;
+
+            // Sync user data from master list in state
+            const freshUser = state.users.find(item => item.id === u.id) || u;
+            state.currentUser = freshUser;
+
+            document.getElementById('userName').innerText = freshUser.name;
+            document.getElementById('userCode').innerText = `#${freshUser.code}`;
+            document.getElementById('userPoints').innerText = freshUser.points.toLocaleString();
+
+            // Calculate Tier
+            let tierName = 'Silver Member';
+            let tierClass = 'silver-card';
+            let badgeText = 'Silver';
+            let nextMsg = '';
+            let progressPct = 0;
+
+            if (freshUser.points >= 1500) {
+                tierName = 'Platinum VIP';
+                badgeText = 'Platinum';
+                tierClass = 'gradient-card';
+                nextMsg = 'คุณอยู่ในระดับสูงสุด Platinum เรียบร้อยแล้ว!';
+                progressPct = 100;
+            } else if (freshUser.points >= 500) {
+                tierName = 'Gold Member';
+                badgeText = 'Gold';
+                tierClass = 'gold-card';
+                const needed = 1500 - freshUser.points;
+                nextMsg = `สะสมอีก ${needed.toLocaleString()} คะแนน เพื่ออัปเกรดเป็น Platinum`;
+                progressPct = ((freshUser.points - 500) / 1000) * 100;
+            } else {
+                tierName = 'Silver Member';
+                badgeText = 'Silver';
+                tierClass = 'silver-card';
+                const needed = 500 - freshUser.points;
+                nextMsg = `สะสมอีก ${needed.toLocaleString()} คะแนน เพื่ออัปเกรดเป็น Gold`;
+                progressPct = (freshUser.points / 500) * 100;
+            }
+
+            const cardEl = document.getElementById('memberTierCard');
+            cardEl.className = `${tierClass} rounded-2xl p-6 text-white shadow-xl relative overflow-hidden flex flex-col justify-between min-h-[220px] transition-all duration-300`;
+            document.getElementById('userTierBadge').innerText = badgeText;
+            document.getElementById('tierProgressLabel').innerText = tierName;
+            document.getElementById('tierNextMsg').innerText = nextMsg;
+            document.getElementById('tierProgressBar').style.width = `${Math.min(100, Math.max(5, progressPct))}%`;
+
+            // Stats
+            document.getElementById('statTotalEarned').innerText = freshUser.totalEarned.toLocaleString();
+            document.getElementById('statTotalRedeemed').innerText = freshUser.totalRedeemed.toLocaleString();
+
+            const userLogs = state.logs.filter(l => l.userId === freshUser.id);
+            const redeemCount = userLogs.filter(l => l.type === 'redeem' || l.type === 'deduct').length;
+            document.getElementById('statRedeemCount').innerText = `${redeemCount} ครั้ง`;
+
+            renderUserRewards();
+            renderUserHistory();
+        }
+
+        function switchUserTab(tab) {
+            const btnRewards = document.getElementById('tabUserRewards');
+            const btnHistory = document.getElementById('tabUserHistory');
+            const panelRewards = document.getElementById('panelUserRewards');
+            const panelHistory = document.getElementById('panelUserHistory');
+
+            if (tab === 'rewards') {
+                btnRewards.className = "pb-3 border-b-2 border-brand-600 text-brand-600 flex items-center gap-2 font-semibold";
+                btnHistory.className = "pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 font-semibold";
+                panelRewards.classList.remove('hidden');
+                panelHistory.classList.add('hidden');
+            } else {
+                btnHistory.className = "pb-3 border-b-2 border-brand-600 text-brand-600 flex items-center gap-2 font-semibold";
+                btnRewards.className = "pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 font-semibold";
+                panelHistory.classList.remove('hidden');
+                panelRewards.classList.add('hidden');
+            }
+        }
+
+        function renderUserRewards() {
+            const grid = document.getElementById('userRewardsGrid');
+            grid.innerHTML = '';
+
+            const userPts = state.currentUser ? state.currentUser.points : 0;
+
+            state.rewards.forEach(r => {
+                const canRedeem = userPts >= r.points;
+                
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between";
+                
+                let iconHTML = `<i class="fa-solid ${r.icon || 'fa-gift'} text-3xl text-brand-600"></i>`;
+                if (r.icon && r.icon.startsWith('http')) {
+                    iconHTML = `<img src="${r.icon}" class="w-12 h-12 object-cover rounded-xl">`;
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <div class="w-14 h-14 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-center mb-4">
+                            ${iconHTML}
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-base leading-snug">${r.title}</h4>
+                        <p class="text-xs text-slate-500 mt-1 leading-relaxed">${r.desc || 'ไม่มีรายละเอียดเพิ่มเติม'}</p>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs text-slate-400 block">ใช้คะแนน</span>
+                            <span class="font-extrabold text-brand-600 text-lg">${r.points.toLocaleString()}</span>
+                            <span class="text-xs text-slate-600">แต้ม</span>
+                        </div>
+                        <button onclick="promptRedeem('${r.id}')" ${!canRedeem ? 'disabled' : ''} 
+                            class="px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                                canRedeem 
+                                ? 'bg-brand-600 hover:bg-brand-700 text-white shadow-md shadow-brand-500/20 active:scale-95' 
+                                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                            }">
+                            ${canRedeem ? 'แลกของรางวัล' : 'แต้มไม่พอ'}
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderUserHistory() {
+            const table = document.getElementById('userHistoryTable');
+            table.innerHTML = '';
+
+            if (!state.currentUser) return;
+
+            const userLogs = state.logs.filter(l => l.userId === state.currentUser.id);
+
+            if (userLogs.length === 0) {
+                table.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400 text-xs">ยังไม่มีประวัติรายการสะสมหรือแลกแต้ม</td></tr>`;
+                return;
+            }
+
+            userLogs.forEach(l => {
+                const isAdd = l.type === 'add';
+                const row = document.createElement('tr');
+                row.className = "hover:bg-slate-50/60 transition-colors";
+                row.innerHTML = `
+                    <td class="p-4 text-xs text-slate-500 font-mono">${l.timestamp}</td>
+                    <td class="p-4 font-medium text-slate-800">${l.title}</td>
+                    <td class="p-4">
+                        <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                            isAdd ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                        }">
+                            ${isAdd ? 'ได้รับคะแนน' : 'ใช้คะแนนแลก'}
+                        </span>
+                    </td>
+                    <td class="p-4 text-right font-bold text-sm ${isAdd ? 'text-emerald-600' : 'text-rose-600'}">
+                        ${isAdd ? '+' : '-'}${l.points.toLocaleString()}
+                    </td>
+                `;
+                table.appendChild(row);
+            });
+        }
+
+        // REDEEM PROCESS
+        function promptRedeem(rewardId) {
+            const reward = state.rewards.find(r => r.id === rewardId);
+            if (!reward || !state.currentUser) return;
+
+            state.selectedRewardForRedeem = reward;
+            document.getElementById('redeemModalItem').innerText = reward.title;
+            document.getElementById('redeemModalPoints').innerText = `${reward.points.toLocaleString()} แต้ม`;
+            
+            document.getElementById('btnConfirmRedeem').onclick = executeRedeem;
+            document.getElementById('redeemModal').classList.remove('hidden');
+        }
+
+        function closeRedeemModal() {
+            document.getElementById('redeemModal').classList.add('hidden');
+            state.selectedRewardForRedeem = null;
+        }
+
+        function executeRedeem() {
+            const reward = state.selectedRewardForRedeem;
+            const user = state.currentUser;
+
+            if (!reward || !user) return;
+
+            if (user.points < reward.points) {
+                showToast('คะแนนไม่เพียงพอในการแลก', 'error');
+                closeRedeemModal();
+                return;
+            }
+
+            // Deduct Points
+            user.points -= reward.points;
+            user.totalRedeemed += reward.points;
+            touchUser(user);
+
+            // Add Log
+            state.logs.unshift({
+                id: 'log_' + Date.now(),
+                userId: user.id,
+                userName: user.name,
+                type: 'redeem',
+                points: reward.points,
+                title: `แลกรับ: ${reward.title}`,
+                timestamp: getNowFormatted()
+            });
+
+            saveStateToStorage();
+            closeRedeemModal();
+            renderUserView();
+            renderAdminView();
+
+            // Trigger Confetti
+            confetti({
+                particleCount: 80,
+                spread: 60,
+                origin: { y: 0.6 }
+            });
+
+            showToast(`แลกรับ "${reward.title}" สำเร็จแล้ว!`, 'success');
+        }
+
+        // ==========================================
+        // ADMIN VIEW LOGIC
+        // ==========================================
+        function switchAdminTab(tab) {
+            const btnUsers = document.getElementById('btnAdminTabUsers');
+            const btnRewards = document.getElementById('btnAdminTabRewards');
+            const btnLogs = document.getElementById('btnAdminTabLogs');
+
+            const panelUsers = document.getElementById('adminPanelUsers');
+            const panelRewards = document.getElementById('adminPanelRewards');
+            const panelLogs = document.getElementById('adminPanelLogs');
+
+            const activeClass = "px-4 py-2.5 rounded-xl bg-brand-600 text-white flex items-center gap-2 shadow-sm transition-all";
+            const inactiveClass = "px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition-all";
+
+            btnUsers.className = tab === 'users' ? activeClass : inactiveClass;
+            btnRewards.className = tab === 'rewards' ? activeClass : inactiveClass;
+            btnLogs.className = tab === 'logs' ? activeClass : inactiveClass;
+
+            panelUsers.classList.toggle('hidden', tab !== 'users');
+            panelRewards.classList.toggle('hidden', tab !== 'rewards');
+            panelLogs.classList.toggle('hidden', tab !== 'logs');
+        }
+
+        function renderAdminView() {
+            renderAdminUsersTable();
+            renderAdminUserSelectOptions();
+            renderAdminRewards();
+            renderAdminMasterLogs();
+        }
+
+        function renderAdminUsersTable(filterKeyword = '') {
+            const table = document.getElementById('adminUserTable');
+            table.innerHTML = '';
+            document.getElementById('memberCount').innerText = `${state.users.length}`;
+
+            let filtered = state.users;
+            if (filterKeyword) {
+                const kw = filterKeyword.toLowerCase();
+                filtered = state.users.filter(u => 
+                    u.name.toLowerCase().includes(kw) || 
+                    u.email.toLowerCase().includes(kw) || 
+                    u.phone.includes(kw) ||
+                    u.code.toLowerCase().includes(kw)
+                );
+            }
+
+            if (filtered.length === 0) {
+                table.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400 text-xs">ไม่พบข้อมูลสมาชิก</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(u => {
+                let badgeClass = 'bg-slate-100 text-slate-600';
+                let tierLabel = 'Silver';
+                if (u.points >= 1500) { badgeClass = 'bg-purple-50 text-purple-700 border border-purple-200'; tierLabel = 'Platinum'; }
+                else if (u.points >= 500) { badgeClass = 'bg-amber-50 text-amber-700 border border-amber-200'; tierLabel = 'Gold'; }
+
+                const row = document.createElement('tr');
+                row.className = "hover:bg-slate-50/60 transition-colors";
+                row.innerHTML = `
+                    <td class="p-3">
+                        <div class="flex items-center gap-2.5">
+                            <img src="${u.avatar || 'https://placehold.co/40x40/2563eb/ffffff?text=U'}" class="w-8 h-8 rounded-full border border-slate-200">
+                            <div>
+                                <p class="font-bold text-slate-800 text-xs">${u.name}</p>
+                                <p class="text-[10px] text-slate-400 font-mono">${u.email} (${u.code})</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-3 text-xs text-slate-600 font-mono">${u.phone || '-'}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${badgeClass}">
+                            ${tierLabel}
+                        </span>
+                    </td>
+                    <td class="p-3 text-right font-bold text-brand-600 text-sm">
+                        ${u.points.toLocaleString()}
+                    </td>
+                    <td class="p-3 text-center text-xs font-semibold ${daysLeft(u) <= 3 ? 'text-rose-600' : 'text-slate-600'}">
+                        ${daysLeft(u)} วัน
+                    </td>
+                    <td class="p-3 text-center">
+                        <button onclick="selectUserForPointAdj('${u.id}')" class="px-2.5 py-1 bg-brand-50 hover:bg-brand-100 text-brand-600 rounded-lg text-xs font-semibold transition-colors">
+                            <i class="fa-solid fa-plus-minus mr-1"></i> ปรับแต้ม
+                        </button>
+                    </td>
+                `;
+                table.appendChild(row);
+            });
+        }
+
+        function filterAdminUsers() {
+            const val = document.getElementById('adminUserSearch').value;
+            renderAdminUsersTable(val);
+        }
+
+        function renderAdminUserSelectOptions() {
+            const select = document.getElementById('adjUserSelect');
+            select.innerHTML = `<option value="">-- เลือกลูกค้า --</option>`;
+            state.users.forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u.id;
+                opt.innerText = `${u.name} (${u.email}) - คงเหลือ ${u.points} แต้ม`;
+                select.appendChild(opt);
+            });
+        }
+
+        function selectUserForPointAdj(userId) {
+            document.getElementById('adjUserSelect').value = userId;
+            document.getElementById('adjAmount').focus();
+        }
+
+        function handlePointAdjust(e) {
+            e.preventDefault();
+            const userId = document.getElementById('adjUserSelect').value;
+            const type = document.getElementById('adjType').value;
+            const amount = parseInt(document.getElementById('adjAmount').value);
+            const reason = document.getElementById('adjReason').value.trim();
+
+            const user = state.users.find(u => u.id === userId);
+            if (!user) {
+                showToast('กรุณาเลือกลูกค้า', 'error');
+                return;
+            }
+
+            if (type === 'deduct' && user.points < amount) {
+                showToast(`แต้มไม่พอหัก! ลูกค้ามีเพียง ${user.points} แต้ม`, 'error');
+                return;
+            }
+
+            if (type === 'add') {
+                user.points += amount;
+                user.totalEarned += amount;
+            } else {
+                user.points -= amount;
+                user.totalRedeemed += amount;
+            }
+            touchUser(user); // มีความเคลื่อนไหว ต่ออายุอีก 30 วัน
+
+            // Log entry
+            state.logs.unshift({
+                id: 'log_' + Date.now(),
+                userId: user.id,
+                userName: user.name,
+                type: type,
+                points: amount,
+                title: reason,
+                timestamp: getNowFormatted()
+            });
+
+            saveStateToStorage();
+            renderAdminView();
+            renderUserView();
+
+            document.getElementById('pointAdjustForm').reset();
+            showToast(`ทำรายการปรับคะแนนให้ ${user.name} สำเร็จ`, 'success');
+        }
+
+        // ADMIN REWARDS MANAGEMENT
+        function renderAdminRewards() {
+            const grid = document.getElementById('adminRewardsGrid');
+            grid.innerHTML = '';
+
+            state.rewards.forEach(r => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between relative group";
+                
+                let iconHTML = `<i class="fa-solid ${r.icon || 'fa-gift'} text-3xl text-brand-600"></i>`;
+                if (r.icon && r.icon.startsWith('http')) {
+                    iconHTML = `<img src="${r.icon}" class="w-12 h-12 object-cover rounded-xl">`;
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start">
+                            <div class="w-12 h-12 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-center mb-3">
+                                ${iconHTML}
+                            </div>
+                            <div class="flex gap-1">
+                                <button onclick="openRewardModal('${r.id}')" class="p-1.5 text-slate-400 hover:text-brand-600 rounded-lg hover:bg-slate-50 transition-colors">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button onclick="deleteReward('${r.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-50 transition-colors">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-sm leading-snug">${r.title}</h4>
+                        <p class="text-xs text-slate-500 mt-1 line-clamp-2">${r.desc || '-'}</p>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center">
+                        <span class="text-xs text-slate-400">คะแนนที่ใช้</span>
+                        <span class="font-bold text-brand-600 text-base">${r.points.toLocaleString()} แต้ม</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function openRewardModal(rewardId = null) {
+            const modal = document.getElementById('rewardModal');
+            const form = document.getElementById('rewardForm');
+            form.reset();
+
+            if (rewardId) {
+                const r = state.rewards.find(item => item.id === rewardId);
+                if (r) {
+                    document.getElementById('rewardModalTitle').innerText = 'แก้ไขของรางวัล';
+                    document.getElementById('rewardId').value = r.id;
+                    document.getElementById('rewardTitle').value = r.title;
+                    document.getElementById('rewardPoints').value = r.points;
+                    document.getElementById('rewardIcon').value = r.icon || '';
+                    document.getElementById('rewardDesc').value = r.desc || '';
+                }
+            } else {
+                document.getElementById('rewardModalTitle').innerText = 'เพิ่มของรางวัลใหม่';
+                document.getElementById('rewardId').value = '';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeRewardModal() {
+            document.getElementById('rewardModal').classList.add('hidden');
+        }
+
+        function saveReward(e) {
+            e.preventDefault();
+            const id = document.getElementById('rewardId').value;
+            const title = document.getElementById('rewardTitle').value.trim();
+            const points = parseInt(document.getElementById('rewardPoints').value);
+            const icon = document.getElementById('rewardIcon').value.trim() || 'fa-gift';
+            const desc = document.getElementById('rewardDesc').value.trim();
+
+            if (id) {
+                // Edit
+                const r = state.rewards.find(item => item.id === id);
+                if (r) {
+                    r.title = title;
+                    r.points = points;
+                    r.icon = icon;
+                    r.desc = desc;
+                }
+                showToast('แก้ไขของรางวัลเรียบร้อย', 'success');
+            } else {
+                // Add
+                const newReward = {
+                    id: 'rew_' + Date.now(),
+                    title: title,
+                    points: points,
+                    icon: icon,
+                    desc: desc
+                };
+                state.rewards.push(newReward);
+                showToast('เพิ่มของรางวัลใหม่สำเร็จ', 'success');
+            }
+
+            saveStateToStorage();
+            closeRewardModal();
+            renderAdminRewards();
+            renderUserRewards();
+        }
+
+        function deleteReward(rewardId) {
+            if (confirm('คุณต้องการลบของรางวัลนี้ใช่หรือไม่?')) {
+                state.rewards = state.rewards.filter(r => r.id !== rewardId);
+                saveStateToStorage();
+                renderAdminRewards();
+                renderUserRewards();
+                showToast('ลบของรางวัลเรียบร้อย', 'info');
+            }
+        }
+
+        // ADMIN MASTER LOGS
+        function renderAdminMasterLogs() {
+            const table = document.getElementById('adminMasterLogsTable');
+            table.innerHTML = '';
+
+            document.getElementById('totalLogCount').innerText = `${state.logs.length} รายการ`;
+
+            if (state.logs.length === 0) {
+                table.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400 text-xs">ยังไม่มีประวัติธุรกรรมในระบบ</td></tr>`;
+                return;
+            }
+
+            state.logs.forEach(l => {
+                const isAdd = l.type === 'add';
+                const row = document.createElement('tr');
+                row.className = "hover:bg-slate-50/60 transition-colors";
+                row.innerHTML = `
+                    <td class="p-3 text-xs text-slate-500 font-mono">${l.timestamp}</td>
+                    <td class="p-3 font-semibold text-slate-800 text-xs">${l.userName}</td>
+                    <td class="p-3 text-slate-700 text-xs">${l.title}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            isAdd ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                        }">
+                            ${isAdd ? 'เพิ่มแต้ม' : 'หักแต้ม/แลก'}
+                        </span>
+                    </td>
+                    <td class="p-3 text-right font-bold text-xs ${isAdd ? 'text-emerald-600' : 'text-rose-600'}">
+                        ${isAdd ? '+' : '-'}${l.points.toLocaleString()}
+                    </td>
+                `;
+                table.appendChild(row);
+            });
+        }
+
+        // ==========================================
+        // UTILITY FUNCTIONS
+        // ==========================================
+        function getNowFormatted() {
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day} ${hours}:${minutes}`;
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let bgClass = 'bg-slate-900 text-white';
+            let icon = 'fa-circle-info text-blue-400';
+            
+            if (type === 'success') {
+                bgClass = 'bg-emerald-950 text-emerald-50 border border-emerald-800';
+                icon = 'fa-circle-check text-emerald-400';
+            } else if (type === 'error') {
+                bgClass = 'bg-rose-950 text-rose-50 border border-rose-800';
+                icon = 'fa-circle-exclamation text-rose-400';
+            }
+
+            toast.className = `${bgClass} p-3.5 rounded-2xl shadow-xl flex items-center gap-3 text-xs font-semibold pointer-events-auto transform transition-all duration-300 translate-y-2 opacity-0`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icon} text-base"></i>
+                <span class="flex-grow">${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            // Animate in
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            // Remove Toast
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
