@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CMVC Cafe Member</title>
+    <title>ระบบสะสมแต้ม - Loyalty Points System</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -12,6 +12,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- QR Code generator & scanner -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
     <script>
         tailwind.config = {
@@ -86,8 +89,8 @@
                     <i class="fa-solid fa-coins"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-slate-900 text-lg leading-none">CMVC Cafe Member</h1>
-                    <span class="text-xs text-slate-500 font-medium">คาเฟ่วิทยาลัยอาชีวศึกษาเชียงใหม่</span>
+                    <h1 class="font-bold text-slate-900 text-lg leading-none">PointPlus</h1>
+                    <span class="text-xs text-slate-500 font-medium">ระบบสะสมแต้มรีวอร์ด</span>
                 </div>
             </div>
 
@@ -212,6 +215,9 @@
                         <button onclick="switchUserTab('history')" id="tabUserHistory" class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2">
                             <i class="fa-solid fa-clock-rotate-left"></i> ประวัติคะแนนและการแลก
                         </button>
+                        <button onclick="switchUserTab('qr')" id="tabUserQR" class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-qrcode"></i> QR ของฉัน
+                        </button>
                     </div>
 
                     <!-- Rewards Tab Panel -->
@@ -223,6 +229,24 @@
                         <div id="userRewardsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             <!-- Rendered by JS -->
                         </div>
+                    </div>
+
+                    <!-- QR Tab Panel -->
+                    <div id="panelUserQR" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm p-6 text-center max-w-md mx-auto w-full space-y-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-lg">QR Code สะสมแต้มของคุณ</h3>
+                            <p class="text-xs text-slate-500 mt-1">ให้พนักงานสแกน QR นี้ เพื่อรับ <span class="font-bold text-brand-600">100 แต้ม</span> ทุกครั้งที่สแกน</p>
+                        </div>
+                        <div class="inline-block p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-inner">
+                            <div id="userQRBox" class="flex items-center justify-center"></div>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-slate-800 text-sm" id="userQRName">-</p>
+                            <p class="text-xs text-slate-400 font-mono" id="userQRCode">#0000</p>
+                        </div>
+                        <button onclick="downloadQR('userQRBox', 'qr-' + (state.currentUser ? state.currentUser.code : 'member'))" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-semibold shadow-md flex items-center gap-2 mx-auto">
+                            <i class="fa-solid fa-download"></i> บันทึกรูป QR
+                        </button>
                     </div>
 
                     <!-- History Tab Panel -->
@@ -254,7 +278,7 @@
                 <div class="space-y-2">
                     <h2 class="text-2xl font-bold text-slate-900">เข้าสู่ระบบเพื่อสะสมและแลกแต้ม</h2>
                     <p class="text-slate-500 text-sm leading-relaxed">
-                        
+                        รับสิทธิพิเศษสุดเอ็กซ์คลูซีฟ สะสมคะแนนทุกการใช้บริการ แลกรับส่วนลด เครื่องดื่ม และของรางวัลมากมาย
                     </p>
                 </div>
                 
@@ -266,9 +290,9 @@
                             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                         </svg>
-                        เข้าสู่ระบบด้วย Google (Gmail)
+                        เข้าสู่ระบบด้วย Google Account (Gmail)
                     </button>
-                    <p class="text-xs text-slate-400"></p>
+                    <p class="text-xs text-slate-400">ระบบจำลองการล็อกอิน Google อัตโนมัติ ปลอดภัย ไม่ต้องป้อนรหัสผ่านจริง</p>
                 </div>
             </div>
 
@@ -289,6 +313,9 @@
                 </button>
                 <button onclick="switchAdminTab('logs')" id="btnAdminTabLogs" class="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition-all">
                     <i class="fa-solid fa-receipt"></i> ประวัติรายการทั้งหมด (Master Logs)
+                </button>
+                <button onclick="switchAdminTab('scan')" id="btnAdminTabScan" class="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-qrcode"></i> สแกน QR รับแต้ม
                 </button>
             </div>
 
@@ -396,6 +423,39 @@
 
                 <div id="adminRewardsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     <!-- Rendered by JS -->
+                </div>
+            </div>
+
+            <!-- ADMIN TAB 4: QR SCANNER -->
+            <div id="adminPanelScan" class="hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+                        <div class="flex items-center gap-3 pb-3 border-b border-slate-100">
+                            <div class="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center"><i class="fa-solid fa-camera"></i></div>
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-base">สแกน QR ลูกค้า</h3>
+                                <p class="text-xs text-slate-500">สแกนแล้วลูกค้าได้รับ <span class="font-bold text-brand-600" id="qrPointsLabel">100</span> แต้มทันที</p>
+                            </div>
+                        </div>
+                        <div id="qrReader" class="w-full rounded-xl overflow-hidden bg-slate-100 min-h-[240px] flex items-center justify-center text-slate-400 text-xs">กล้องยังไม่เปิด</div>
+                        <button id="btnToggleScanner" onclick="toggleQrScanner()" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold shadow-md flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-video"></i> <span>เปิดกล้องสแกน</span>
+                        </button>
+                        <p class="text-[10px] text-slate-400">* การเปิดกล้องต้องใช้งานผ่าน HTTPS หรือ localhost และอนุญาตสิทธิ์กล้องในเบราว์เซอร์</p>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+                        <div id="qrScanResult" class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-sm text-slate-500">
+                            รอการสแกน...
+                        </div>
+                        <div class="pt-3 border-t border-slate-100 space-y-2">
+                            <label class="block text-xs font-semibold text-slate-700">หรือวางรหัสจาก QR ด้วยตนเอง</label>
+                            <form onsubmit="submitManualQR(event)" class="flex gap-2">
+                                <input type="text" id="manualQRInput" placeholder="PPQR:usr_..." class="flex-grow p-2.5 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                                <button type="submit" class="px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold">ยืนยัน</button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -515,6 +575,26 @@
                     <button type="submit" id="adminPassSubmit" class="w-1/2 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-semibold hover:bg-brand-700 shadow">เข้าสู่ระบบ</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Admin: View User QR Modal -->
+    <div id="qrModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-center">
+            <h3 class="font-bold text-slate-800 text-lg">QR Code สมาชิก</h3>
+            <div class="inline-block p-4 border-2 border-slate-200 rounded-2xl">
+                <div id="qrModalBox" class="flex items-center justify-center"></div>
+            </div>
+            <div>
+                <p class="font-semibold text-slate-800 text-sm" id="qrModalName">-</p>
+                <p class="text-xs text-slate-400 font-mono" id="qrModalCode">-</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="closeQRModal()" class="w-1/2 py-2.5 border border-slate-300 text-slate-600 rounded-xl font-semibold text-sm hover:bg-slate-50">ปิด</button>
+                <button onclick="downloadQR('qrModalBox', 'qr-' + document.getElementById('qrModalCode').innerText)" class="w-1/2 py-2.5 bg-brand-600 text-white rounded-xl font-semibold text-sm hover:bg-brand-700 shadow-md">
+                    <i class="fa-solid fa-download mr-1"></i> บันทึกรูป
+                </button>
+            </div>
         </div>
     </div>
 
@@ -742,6 +822,7 @@
         }
 
         function applyRole(role) {
+            if (role !== 'admin') stopQrScanner();
             state.currentRole = role;
             const btnUser = document.getElementById('btnRoleUser');
             const btnAdmin = document.getElementById('btnRoleAdmin');
@@ -930,6 +1011,17 @@
         }
 
         function switchUserTab(tab) {
+            const on = "pb-3 border-b-2 border-brand-600 text-brand-600 flex items-center gap-2 font-semibold";
+            const off = "pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 font-semibold";
+            const map = { rewards: ['tabUserRewards', 'panelUserRewards'], history: ['tabUserHistory', 'panelUserHistory'], qr: ['tabUserQR', 'panelUserQR'] };
+            Object.keys(map).forEach(k => {
+                document.getElementById(map[k][0]).className = (k === tab) ? on : off;
+                document.getElementById(map[k][1]).classList.toggle('hidden', k !== tab);
+            });
+            if (tab === 'qr') renderUserQR();
+        }
+
+        function _legacySwitchUserTab(tab) {
             const btnRewards = document.getElementById('tabUserRewards');
             const btnHistory = document.getElementById('tabUserHistory');
             const panelRewards = document.getElementById('panelUserRewards');
@@ -1094,6 +1186,22 @@
         // ADMIN VIEW LOGIC
         // ==========================================
         function switchAdminTab(tab) {
+            const activeClass = "px-4 py-2.5 rounded-xl bg-brand-600 text-white flex items-center gap-2 shadow-sm transition-all";
+            const inactiveClass = "px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition-all";
+            const map = {
+                users: ['btnAdminTabUsers', 'adminPanelUsers'],
+                rewards: ['btnAdminTabRewards', 'adminPanelRewards'],
+                logs: ['btnAdminTabLogs', 'adminPanelLogs'],
+                scan: ['btnAdminTabScan', 'adminPanelScan']
+            };
+            Object.keys(map).forEach(k => {
+                document.getElementById(map[k][0]).className = (k === tab) ? activeClass : inactiveClass;
+                document.getElementById(map[k][1]).classList.toggle('hidden', k !== tab);
+            });
+            if (tab !== 'scan') stopQrScanner();
+        }
+
+        function _legacySwitchAdminTab(tab) {
             const btnUsers = document.getElementById('btnAdminTabUsers');
             const btnRewards = document.getElementById('btnAdminTabRewards');
             const btnLogs = document.getElementById('btnAdminTabLogs');
@@ -1175,6 +1283,9 @@
                     <td class="p-3 text-center">
                         <button onclick="selectUserForPointAdj('${u.id}')" class="px-2.5 py-1 bg-brand-50 hover:bg-brand-100 text-brand-600 rounded-lg text-xs font-semibold transition-colors">
                             <i class="fa-solid fa-plus-minus mr-1"></i> ปรับแต้ม
+                        </button>
+                        <button onclick="showUserQR('${u.id}')" class="ml-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors">
+                            <i class="fa-solid fa-qrcode mr-1"></i> QR
                         </button>
                     </td>
                 `;
@@ -1403,6 +1514,176 @@
         // ==========================================
         // UTILITY FUNCTIONS
         // ==========================================
+        // ==========================================
+        // QR CODE: สร้าง QR เฉพาะของลูกค้าแต่ละคน / สแกนแล้วได้ 100 แต้มเสมอ
+        // ==========================================
+        const QR_POINTS = 100;            // แต้มที่ได้รับต่อการสแกน 1 ครั้ง (คงที่)
+        const QR_PREFIX = 'PPQR';
+        const QR_DUPLICATE_GUARD_MS = 5000; // กันกล้องอ่านซ้ำรัว ๆ จาก QR ใบเดิมภายใน 5 วินาที
+        let qrScanner = null;
+        let lastScan = { text: '', time: 0 };
+
+        // โทเคนสุ่มประจำตัวลูกค้า ทำให้เดา QR ของคนอื่นไม่ได้
+        function ensureQrToken(user) {
+            if (!user.qrToken) {
+                const arr = new Uint8Array(8);
+                crypto.getRandomValues(arr);
+                user.qrToken = Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
+                saveStateToStorage();
+            }
+            return user.qrToken;
+        }
+
+        function buildQrPayload(user) {
+            return `${QR_PREFIX}:${user.id}:${ensureQrToken(user)}`;
+        }
+
+        function renderQR(containerId, user, size) {
+            const box = document.getElementById(containerId);
+            box.innerHTML = '';
+            new QRCode(box, {
+                text: buildQrPayload(user),
+                width: size,
+                height: size,
+                colorDark: '#1e3a8a',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+
+        function renderUserQR() {
+            const u = state.currentUser;
+            if (!u) return;
+            document.getElementById('userQRName').innerText = u.name;
+            document.getElementById('userQRCode').innerText = `#${u.code}`;
+            renderQR('userQRBox', u, 220);
+        }
+
+        function showUserQR(userId) {
+            const u = state.users.find(x => x.id === userId);
+            if (!u) return;
+            document.getElementById('qrModalName').innerText = u.name;
+            document.getElementById('qrModalCode').innerText = u.code;
+            renderQR('qrModalBox', u, 220);
+            document.getElementById('qrModal').classList.remove('hidden');
+        }
+
+        function closeQRModal() {
+            document.getElementById('qrModal').classList.add('hidden');
+        }
+
+        function downloadQR(containerId, filename) {
+            const box = document.getElementById(containerId);
+            const canvas = box.querySelector('canvas');
+            const img = box.querySelector('img');
+            const href = canvas ? canvas.toDataURL('image/png') : (img ? img.src : null);
+            if (!href) { showToast('ยังไม่มี QR ให้บันทึก', 'error'); return; }
+            const a = document.createElement('a');
+            a.href = href;
+            a.download = `${filename}.png`;
+            a.click();
+        }
+
+        // ---------- Scanner (ผู้ดูแลระบบ) ----------
+        function toggleQrScanner() {
+            if (qrScanner) stopQrScanner(); else startQrScanner();
+        }
+
+        function setScannerButton(running) {
+            const btn = document.getElementById('btnToggleScanner');
+            if (!btn) return;
+            btn.innerHTML = running
+                ? '<i class="fa-solid fa-stop"></i> <span>ปิดกล้อง</span>'
+                : '<i class="fa-solid fa-video"></i> <span>เปิดกล้องสแกน</span>';
+        }
+
+        function startQrScanner() {
+            if (qrScanner) return;
+            if (typeof Html5Qrcode === 'undefined') {
+                showToast('โหลดตัวสแกน QR ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต', 'error');
+                return;
+            }
+            const scanner = new Html5Qrcode('qrReader');
+            qrScanner = scanner;
+            scanner.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: { width: 220, height: 220 } },
+                (text) => processQrScan(text),
+                () => {}
+            ).then(() => setScannerButton(true))
+             .catch(() => {
+                qrScanner = null;
+                setScannerButton(false);
+                showToast('เปิดกล้องไม่ได้ กรุณาอนุญาตสิทธิ์กล้อง (ต้องใช้ HTTPS/localhost)', 'error');
+             });
+        }
+
+        function stopQrScanner() {
+            if (!qrScanner) return;
+            const s = qrScanner;
+            qrScanner = null;
+            setScannerButton(false);
+            s.stop().then(() => s.clear()).catch(() => {});
+        }
+
+        function submitManualQR(e) {
+            e.preventDefault();
+            const input = document.getElementById('manualQRInput');
+            processQrScan(input.value.trim(), true);
+            input.value = '';
+        }
+
+        function showScanResult(ok, html) {
+            const el = document.getElementById('qrScanResult');
+            el.className = 'p-4 rounded-xl text-center text-sm border ' + (ok
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-rose-50 border-rose-200 text-rose-800');
+            el.innerHTML = html;
+        }
+
+        function processQrScan(text, manual = false) {
+            const now = Date.now();
+            if (!manual && text === lastScan.text && now - lastScan.time < QR_DUPLICATE_GUARD_MS) return;
+            lastScan = { text, time: now };
+
+            const parts = (text || '').split(':');
+            if (parts.length !== 3 || parts[0] !== QR_PREFIX) {
+                showScanResult(false, '<i class="fa-solid fa-circle-xmark mr-1"></i> QR ไม่ถูกต้อง (ไม่ใช่ QR ของระบบนี้)');
+                return;
+            }
+            const user = state.users.find(u => u.id === parts[1]);
+            if (!user || !user.qrToken || user.qrToken !== parts[2]) {
+                showScanResult(false, '<i class="fa-solid fa-circle-xmark mr-1"></i> ไม่พบสมาชิก หรือ QR หมดอายุ/ไม่ถูกต้อง');
+                return;
+            }
+
+            // เพิ่ม 100 แต้มเสมอ
+            user.points += QR_POINTS;
+            user.totalEarned += QR_POINTS;
+            touchUser(user);
+
+            state.logs.unshift({
+                id: 'log_' + Date.now(),
+                userId: user.id,
+                userName: user.name,
+                type: 'add',
+                points: QR_POINTS,
+                title: 'สแกน QR รับแต้ม',
+                timestamp: getNowFormatted()
+            });
+
+            saveStateToStorage();
+            renderAdminView();
+            renderUserView();
+
+            showScanResult(true, `
+                <i class="fa-solid fa-circle-check text-2xl text-emerald-500 block mb-1"></i>
+                <p class="font-bold">${user.name} ได้รับ +${QR_POINTS} แต้ม</p>
+                <p class="text-xs mt-1">คะแนนคงเหลือ ${user.points.toLocaleString()} แต้ม</p>`);
+            showToast(`เพิ่ม ${QR_POINTS} แต้มให้ ${user.name} แล้ว`, 'success');
+            confetti({ particleCount: 60, spread: 55, origin: { y: 0.7 } });
+        }
+
         function getNowFormatted() {
             const d = new Date();
             const year = d.getFullYear();
