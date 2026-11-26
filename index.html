@@ -14,7 +14,7 @@
     // =====================================================
     //  วางลิงก์ Apps Script (ที่ลงท้ายด้วย /exec) ไว้ตรงนี้
     // =====================================================
-    const API_URL = 'https://script.google.com/macros/s/AKfycbw9q-GccOLFN_Y82kthLFDAESQecJdcPodzPxPMjdKjsDsBoJgkSmoHCXhXR613SC7QlA/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbwiBp79Uj34v_UVvfS96LbZee8W7Wpk1DT4cI3GNFiPHJBT1xHPzR9JGNgcZRcq_fb8/exec';
   </script>
 
   <style>
@@ -83,11 +83,11 @@
   </header>
   <div id="globalMsg" class="msg"></div>
 
-  <!-- ================= หน้าลูกค้า: เช็กด้วยเบอร์ ================= -->
+  <!-- ================= หน้าลูกค้า: เช็กด้วยอีเมล ================= -->
   <section id="customerView" class="hidden">
     <div class="card">
-      <label for="cPhone">เบอร์โทรศัพท์</label>
-      <input id="cPhone" type="tel" inputmode="numeric" placeholder="08xxxxxxxx">
+      <label for="cPhone">อีเมล</label>
+      <input id="cPhone" type="email" inputmode="email" autocomplete="email" placeholder="name@example.com">
       <button id="cBtn">ดูบัตรสะสมแต้ม</button>
       <div id="cMsg" class="msg"></div>
     </div>
@@ -98,7 +98,7 @@
     <div id="pCard" class="card"><p class="status">กำลังโหลด...</p></div>
     <div id="pMsg" class="msg"></div>
     <p class="small">ยื่น QR นี้ให้พนักงานสแกนทุกครั้งที่ซื้อ · หน้านี้อัปเดตแต้มอัตโนมัติ</p>
-    <button id="pSwitch" class="secondary">ไม่ใช่บัตรของฉัน / เปลี่ยนเบอร์</button>
+    <button id="pSwitch" class="secondary">ไม่ใช่บัตรของฉัน / เปลี่ยนอีเมล</button>
   </section>
 
   <!-- ================= หน้าพนักงาน ================= -->
@@ -129,15 +129,15 @@
       </div>
 
       <div class="card">
-        <h2>ค้นหาด้วยเบอร์โทร / สมัครใหม่</h2>
-        <input id="sPhone" type="tel" inputmode="numeric" placeholder="08xxxxxxxx">
+        <h2>ค้นหาด้วยอีเมล / สมัครใหม่</h2>
+        <input id="sPhone" type="email" inputmode="email" placeholder="name@example.com">
         <button id="findBtn" class="secondary">ค้นหา</button>
         <div id="sMsg" class="msg"></div>
       </div>
 
       <div id="regBox" class="card hidden">
-        <p class="name">ยังไม่มีเบอร์นี้ในระบบ</p>
-        <p class="meta">สมัครสมาชิกใหม่ด้วยเบอร์ <b id="regPhone"></b></p>
+        <p class="name">ยังไม่มีอีเมลนี้ในระบบ</p>
+        <p class="meta">สมัครสมาชิกใหม่ด้วยอีเมล <b id="regPhone"></b></p>
         <label for="regName">ชื่อลูกค้า</label>
         <input id="regName" placeholder="เช่น สมชาย">
         <button id="regBtn">สมัครสมาชิก</button>
@@ -245,7 +245,7 @@
     }
   }
 
-  // ================= ลูกค้า: เช็กด้วยเบอร์ =================
+  // ================= ลูกค้า: เช็กด้วยอีเมล =================
   function initCustomer() {
     const saved = loadToken();
     if (saved) { initCard(saved); return; }
@@ -257,7 +257,7 @@
       try {
         const c = await call('checkCard', $('cPhone').value);
         if (!c) {
-          showMsg($('cMsg'), 'ไม่พบเบอร์นี้ในระบบ สมัครสมาชิกได้ที่เคาน์เตอร์', 'err');
+          showMsg($('cMsg'), 'ไม่พบอีเมลนี้ในระบบ สมัครสมาชิกได้ที่เคาน์เตอร์', 'err');
         } else {
           saveToken(c.token);
           $('customerView').classList.add('hidden');
@@ -360,7 +360,7 @@
         if (c) { showQr = false; showCustomer(c); }
         else {
           $('custBox').classList.add('hidden');
-          $('regPhone').textContent = $('sPhone').value.replace(/\D/g, '');
+          $('regPhone').textContent = $('sPhone').value.trim().toLowerCase();
           $('regName').value = '';
           $('regBox').classList.remove('hidden');
           $('regName').focus();
@@ -387,7 +387,7 @@
     const add = async (n, btn) => {
       busy(btn, true, '...');
       try {
-        const c = await call('staffAddStamps', PIN, current.phone, n);
+        const c = await call('staffAddStamps', PIN, current.email, n);
         busy(btn, false);
         showCustomer(c);
         showMsg($('sMsg'), '✅ เพิ่ม ' + n + ' แต้มให้คุณ ' + c.name + ' แล้ว', 'ok');
@@ -406,7 +406,7 @@
       const btn = $('redeemBtn');
       busy(btn, true, 'กำลังแลก...');
       try {
-        const c = await call('staffRedeem', PIN, current.phone);
+        const c = await call('staffRedeem', PIN, current.email);
         busy(btn, false);
         showCustomer(c);
         showMsg($('sMsg'), '🎁 แลกฟรีเรียบร้อย เหลือ ' + c.stamps + ' แต้ม', 'ok');
@@ -449,7 +449,7 @@
   function showCustomer(c) {
     current = c;
     renderCard($('sCard'), c, {
-      title: c.name + ' (' + c.phone + ')',
+      title: c.name + ' (' + c.email + ')',
       meta: 'แลกฟรีไปแล้ว ' + c.freeRedeemed + ' แก้ว · สะสมทั้งหมด ' + c.totalStamps + ' แก้ว · มาล่าสุด ' + c.lastVisit,
       qr: showQr,
       qrNote: 'ให้ลูกค้าสแกนด้วยกล้องมือถือ เพื่อเปิดบัตรและบันทึกไว้ใช้ครั้งต่อไป'
