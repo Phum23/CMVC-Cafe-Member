@@ -256,6 +256,7 @@
           <input id="addN" type="number" min="1" max="50" placeholder="จำนวนแก้ว" style="margin-top:12px">
           <button id="addNBtn" class="secondary">เพิ่ม</button>
         </div>
+        <input id="redeemMenu" placeholder="เมนูที่แลกฟรี เช่น ลาเต้เย็น" style="margin-top:12px">
         <button id="redeemBtn" class="gift">🎁 แลกฟรี 1 แก้ว</button>
         <button id="showQrBtn" class="secondary">แสดง QR ของลูกค้า</button>
       </div>
@@ -543,18 +544,20 @@
       $('addN').value = '';
     };
 
-    $('redeemBtn').onclick = async () => {
-      if (!confirm('ยืนยันแลกเครื่องดื่มฟรี 1 แก้ว ให้คุณ ' + current.name + '?')) return;
+        $('redeemBtn').onclick = async () => {
+      const menu = $('redeemMenu').value.trim();
+      if (!menu) { showMsg($('sMsg'), 'กรุณาระบุเมนูที่แลกฟรีก่อน', 'err'); $('redeemMenu').focus(); return; }
+      if (!confirm('ยืนยันแลก "' + menu + '" ฟรี 1 แก้ว ให้คุณ ' + current.name + '?')) return;
       const btn = $('redeemBtn');
       busy(btn, true, 'กำลังแลก...');
       try {
-        const c = await call('staffRedeem', PIN, current.email);
+        const c = await call('staffRedeem', PIN, current.email, menu);
         busy(btn, false);
+        $('redeemMenu').value = '';
         showCustomer(c);
-        showMsg($('sMsg'), '🎁 แลกฟรีเรียบร้อย เหลือ ' + c.stamps + ' แต้ม', 'ok');
+        showMsg($('sMsg'), '🎁 แลก "' + menu + '" ฟรีเรียบร้อย เหลือ ' + c.stamps + ' แต้ม', 'ok');
       } catch (e) { busy(btn, false); showCustomer(current); showMsg($('sMsg'), e.message, 'err'); }
     };
-
     $('showQrBtn').onclick = () => { showQr = !showQr; showCustomer(current); };
   }
 
